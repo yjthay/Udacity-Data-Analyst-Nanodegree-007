@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="http://d3js.org/d3.v3.min.js"></script> 
+  <script src="http://labratrevenge.com/d3-tip/javascripts/d3.tip.v0.6.3.js"></script>
+    <style>
+      circle {
+        stroke: lightgrey;
+        stroke-width: 0.5;
+        opacity: 0.6;
+      }
+
+      h2 {
+        text-align: center;
+        color: black;
+      }
+
+      div.years_buttons {
+        position: fixed;
+        top: 130px;
+        left: 50px;
+      }
+
+      div.years_buttons div {
+        background-color: rgb(251, 201, 127);
+        padding: 3px;
+        margin: 7px;
+      }
+       
+      div.tooltip {	
+        position: absolute;			
+        text-align: center;			
+        width: 200px;					
+        height: 40px;					
+        padding: 3px;				
+        font: 12px sans-serif;		
+        background: lightsteelblue;	
+        border: 0px;		
+        border-radius: 8px;			
+        pointer-events: none;			
+      }
+      
+      path {
+            fill: none;
+      }
+    </style>
+    <script type="text/javascript">  
+      function draw(geo_data) {
+        //"use strict";
+        //"https://openflights.org/data.html"
+        // http://bl.ocks.org/d3noob/a22c42db65eb00d4e369
+        
+        
+        // Set margin of SVG
+        var margin = 75,
+            width = 1400 - margin,
+            height = 700 - margin;
+        
+        // Header of the chart
+        d3.select("body")
+          .append("h2")
+          .text("US States' Airport Delays");
+              
+        
+        // Create SVG map
+        var svg = d3.select("body")
+            .append("svg")
+            .attr("width", width + margin*2)
+            .attr("height", height + margin)
+            .append('g')
+            .attr('class', 'map');
+                  
+                  // Function to create a chart below
+                  function linechart(data) {
+                      //debugger; 
+                      parseDate = d3.time.format("%Y").parse
+                      var chart = d3.select("body")
+                          .append("svg")
+                          .attr("width", width + margin*5)
+                          .attr("height", height + margin)
+                          .append('g')
+                          .attr('class', 'chart');
+                      var x = d3.time.scale().range([0, width]);
+                      var y0 = d3.scale.linear().range([height, 0]);
+                      var y1 = d3.scale.linear().range([height, 0]);
+                      var xAxis = d3.svg.axis().scale(x)
+                                    .orient("bottom").ticks(10);
+                      var yAxisLeft = d3.svg.axis().scale(y0)
+                                        .orient("left").ticks(10);
+                      var yAxisRight = d3.svg.axis().scale(y1)
+                                         .orient("right").ticks(10); 
+                      var valueline = d3.svg.line()
+                            .x(function(d) { return x(parseDate(d.key)); })
+                            .y(function(d) { return y0(d.values['delay']); });
+                            
+                      var valueline2 = d3.svg.line()
+                            .x(function(d) { return x(parseDate(d.key)); })
+                            .y(function(d) { return y1(d.values['flights']); });
+
+                      // Scale the range of the data
+                      x.domain(d3.extent(data, function(d) { return parseDate(d.key); }));
+                      y0.domain([0, d3.max(data, function(d) {
+                      return Math.max(d.values['delay']); })]); 
+                      y1.domain([4e6, d3.max(data, function(d) { 
+                      return Math.max(d.values['flights']); })]);  
+                      
+                      chart.append("path")
+                          .style("stroke", "blue")        // Add the valueline path.
+                          .attr("d", valueline(data))
+                          .attr("transform", "translate(" + margin*3 + " ,0)");
+
+                      chart.append("path")        // Add the valueline2 path.
+                          .style("stroke", "red")
+                          .attr("d", valueline2(data))
+                          .attr("transform", "translate(" + margin*3 + " ,0)");
+
+                      chart.append("g")            // Add the X Axis
+                          .attr("class", "x axis")
+                          .attr("transform", "translate("+ margin*3 +"," + height + ")")
+                          .style("stroke", "black")
+                          .call(xAxis);
+
+                      chart.append("g")
+                          .attr("class", "y axis")
+                          .attr("transform", "translate(" + margin*3 + " ,0)")
+                          .style("stroke", "steelblue")
+                          .call(yAxisLeft);	
+
+                      chart.append("g")				
+                          .attr("class", "y axis")	
+                          .attr("transform", "translate(" + (width + (margin*3)) + " ,0)")	
+                          .style("stroke", "red")		
+                          .call(yAxisRight);    
+                      
+                      chart.append("text")
+                          .attr("text-anchor", "middle")  // this makes it easy to centre the text as the transform is applied to the anchor
+                          .attr("transform", "translate("+ (margin*2) +","+(height/2)+")rotate(-90)")  // text is drawn off the screen top left, move down and out and rotate
+                          .text("Arrival Delays Per 1000 Flights (hours)");
+
+                      chart.append("text")
+                          .attr("text-anchor", "middle")  // this makes it easy to centre the text as the transform is applied to the anchor
+                          .attr("transform", "translate("+ ((width+margin*6)/2) +","+(height+(margin/2))+")")  // centre below axis
+                          .text("Year");  
+                      
+                      chart.append("text")
+                          .attr("text-anchor", "middle")  // this makes it easy to centre the text as the transform is applied to the anchor
+                          .attr("transform", "translate("+ (width + margin*4.5) +","+(height/2)+")rotate(90)")  // centre below axis
+                          .text("Total Number of Flights");
+                              
+                      chart.append("text")
+                          .attr("text-anchor", "middle")  // this makes it easy to centre the text as the transform is applied to the anchor
+                          .attr("transform", "translate("+ (width-margin) +","+(15)+")")  // text is drawn off the screen top left, move down and out and rotate
+                          .text("As seen by the red light, over the years, we can") 
+                      chart.append("text")
+                          .attr("text-anchor", "middle")  // this makes it easy to centre the text as the transform is applied to the anchor
+                          .attr("transform", "translate("+ (width-margin) +","+(30)+")")  // text is drawn off the screen top left, move down and out and rotate
+                          .text("see that the total flights in US has increased.")   
+                     
+                   
+                      chart.append("text")
+                          .attr("text-anchor", "middle")  // this makes it easy to centre the text as the transform is applied to the anchor
+                          .attr("transform", "translate("+ (margin*6) +","+(15)+")")  // text is drawn off the screen top left, move down and out and rotate
+                          .text("We note that the pace of infrastructure development has") 
+                      chart.append("text")
+                          .attr("text-anchor", "middle")  // this makes it easy to centre the text as the transform is applied to the anchor
+                          .attr("transform", "translate("+ (margin*6) +","+(30)+")")  // text is drawn off the screen top left, move down and out and rotate
+                          .text("kept pace with the increase of number of flights.")
+                           
+                      
+                      chart.append("text")
+                          .attr("text-anchor", "middle")  // this makes it easy to centre the text as the transform is applied to the anchor
+                          .attr("transform", "translate("+ ((width+margin*6)/2) +","+(height-145)+")")  // text is drawn off the screen top left, move down and out and rotate
+                          .text("Between 2000-2003, we note that delays had an observable drop")                      
+                      chart.append("text")
+                          .attr("text-anchor", "middle")  // this makes it easy to centre the text as the transform is applied to the anchor
+                          .attr("transform", "translate("+ ((width+margin*6)/2) +","+(height-130)+")")  // text is drawn off the screen top left, move down and out and rotate
+                          .text("even though number of flights has started to trend up.")  
+                        
+                      //debugger; 
+                  }
+
+        // Focus the map on just the mainland of US 
+        var projection = d3.geo.mercator()
+                               .scale(1000)
+                               .translate([width*1.85, height*1.7]);
+        var path = d3.geo.path().projection(projection);
+        
+        // Draw map as per US_States.json
+        var map = svg.selectAll('path')
+                     .data(geo_data.features)
+                     .enter()
+                     .append('path')
+                     .attr('d', path)
+                     .style('fill', 'white')
+                     .style('stroke', 'black')
+                     .style('stroke-width', 0.5);
+        
+        // Create 2 legends.  One for the circles to differential between Delays
+        // and Early Arrivals and the other to highlight the state with the
+        // highest and lowest delay for the year
+        var legend = svg.append("g")
+          .attr("class", "legend")
+          .attr("transform", "translate(" + (width - 100) + "," + 40 + ")")
+          .selectAll("g")
+          .data(["Delay", "Early"])
+          .enter().append("g");
+        
+        var legend2 = svg.append("g")
+          .attr("class", "legend")
+          .attr("transform", "translate(" + (width - 300) + "," + 35 + ")")
+          .selectAll("g")
+          .data(["Maximum Delay State", "Minimum Delay State"])
+          .enter().append("g");
+        
+        // Add circles to legend   
+        legend.append("circle")
+            .attr("cy", function(d, i) {
+                return i * 30;
+            })
+            .attr("r", 5)
+            .attr("fill", function(d) {
+                if (d == "Delay") {
+                    return 'red';
+                } else {
+                    return 'green';
+                }
+            });
+        // Add text to legend
+        legend.append("text")
+            .attr("y", function(d, i) {
+                return i * 30 + 5;
+            })
+            .attr("x", 15)
+            .text(function(d) {
+                return d;
+            });
+        
+        // Add sqaure to legend2
+        legend2.append("rect")
+            .attr("y", function(d, i) {
+                return i * 30;
+            })
+            .attr("width", 10)
+            .attr("height", 10)
+            .attr("fill", function(d) {
+                if (d == "Maximum Delay State") {
+                    return 'blue';
+                } else {
+                    return 'lightGrey';
+                }
+            });
+        
+        // Add text to legend2
+        legend2.append("text")
+            .attr("y", function(d, i) {
+                return i * 30+10;
+            })
+            .attr("x", 15)
+            .text(function(d) {
+                return d;
+            });
+      
+        
+         // Find the state with the highest delay for the year
+        function max_delay_state(dataset) {   
+            var max_delay = 0
+            var max_delay_name = ""  
+            
+            for (i=0; i<dataset.length; i++) {
+                  if (dataset[i].values['delay'] >= max_delay) {
+                      max_delay = dataset[i].values['delay']
+                      max_delay_name = dataset[i].key
+                  }
+            }
+            
+            return max_delay_name
+        }
+        // Find the state with the lowest delay for the year              
+        function min_delay_state(dataset) {
+            var min_delay = 10000
+            var min_delay_name = ""  
+            
+            for (i=0; i<dataset.length; i++) {
+                  if (dataset[i].values['delay'] < min_delay) {
+                      min_delay = dataset[i].values['delay']
+                      min_delay_name = dataset[i].key
+                  }
+            }
+            
+            return min_delay_name
+        }
+
+      
+        // Function to plot the data
+        function plot_points(data) {
+            
+            // Function to aggregate the data by state for each year
+            // Output a double nested array with year as the key for the first
+            // level and state as the key for the second level.
+            // Values of mean latitude andd longitude of all airports in the 
+            // state and sum of all delays of airports in each state.
+            function agg_func(leaves) {       
+                
+                var totaldelays = d3.sum(leaves, function(d) {
+                    return d['ArrDelay'];
+                });
+                var coords = leaves.map(function(d) {
+                    return projection([+d.Long, +d.Lat]);
+                });
+
+                var center_x = d3.mean(coords, function(d) {
+                    return d[0];
+                });
+
+                var center_y = d3.mean(coords, function(d) {
+                    return d[1];
+                });
+                 
+                var totalflights = d3.sum(leaves, function(d) {
+                    return d['TotalFlights'];
+                })
+                
+                return {
+                  'delay' : totaldelays/totalflights*1000,
+                  'flights' : totalflights,
+                  'x' : d3.format(".3f")(center_x),
+                  'y' : d3.format(".3f")(center_y),
+                  //'teams' : teams.values()
+                };
+            }
+            // Creates a nested dataset which are grouped by state and year
+            var nested = d3.nest()
+                           .key(function(d) {
+                              return d['Year'];
+                           })
+                           .key(function(d) {
+                              return d['State'];
+                           })
+                           .rollup(agg_func)
+                           .entries(data);   
+            var test = d3.nest()
+                           .key(function(d) {
+                              return d['Year'];
+                           })
+                           .rollup(agg_func)
+                           .entries(data);  
+            linechart(test) 
+            // Maximum delay and minimum delay for the whole data set
+            // so all circles will be proportional
+            var delay_max = d3.max(nested, function(d) {
+                return d3.max(d.values, function(e) {
+                  return e.values['delay'];
+                });
+            });
+            var delay_min = d3.min(nested, function(d) {
+                return d3.min(d.values, function(e) {
+                  return e.values['delay'];
+                });
+            });
+            var delay_max_magnitude = d3.max([delay_max,delay_min], function(d){
+                                          return  Math.abs(d)
+                                      });
+            
+            // Used to map delay to  circle size
+            var radius = d3.scale.sqrt()
+                           .domain([0, delay_max_magnitude])
+                           .range([5, 30]);
+            
+            
+            // Function to update map so as to show the delays for a particular
+            // year              
+            function update(year) { 
+              // Change the shading of the state according delay
+              function highlight_max_state(d) {
+                  
+                  if(d.properties.NAME.indexOf(state_name_max) !== -1) {
+                      return "blue";
+                  } else if(d.properties.NAME.indexOf(state_name_min) !== -1)  {
+                      return 'lightGrey';
+                  } else {
+                      return 'white';
+                  }
+                  
+              }
+                           
+              // Filter out the data with the specific set of year
+              var filtered = nested.filter(function(d) {
+                  return new Date(d['key']).getUTCFullYear() === year;
+              });    
+              
+              // Change the heading of the chart to the year
+              d3.select("h2")
+                .text("US States' Airport Delays: " + year);
+              
+              filtered = filtered[0].values  
+            
+              
+              var totaldelay = 0
+              var totalflights = 0
+              filtered.forEach(function(d) {
+                  totaldelay += +d.values['delay'];
+                  totalflights += +d.values['flights'];
+              });
+                
+              
+              // Remove all the class bubble from the page
+              d3.selectAll('.bubble').remove() 
+              d3.selectAll('.state').remove()
+ 
+              // Highlight max and min states
+              var state_name_max = max_delay_state(filtered)
+              var state_name_min = min_delay_state(filtered)
+              svg.selectAll('path')
+                 .transition()
+                 .duration(500)
+                 .style('fill', highlight_max_state)
+
+              // Define the div for the tooltip
+              var div = d3.select("body").append("div")	
+                  .attr("class", "tooltip")				
+                  .style("opacity", 0);
+                            
+             // Append new class bubble using filtered
+             // Radius determined by magnitude of arrival delay/early   
+             // Tooltip shows attributes year, state and delay in '000 hours. 
+
+             svg.append('g')
+                 .attr("class", "bubble")
+                 .selectAll("circle")
+                 .data(filtered)
+                 .enter()
+                 .append("circle")
+                 .attr('cx', function(d) { return d.values['x']; })
+                 .attr('cy', function(d) { return d.values['y']; })
+                 .attr('r', function(d) {
+                    return radius(Math.abs(d.values['delay']));
+                 })
+                 .attr('fill',function(d) {
+                    if (d.values['delay'] >= 0) {
+                        return 'red';
+                    } else {  
+                        
+                        return 'green';
+                    }
+                 })
+                 .attr('state',  function(d) { return d.key; }) 
+                 .attr('year',  function(d) { return year; })
+                 .attr('delay',  function(d) { return d3.format(",.2f")(d.values['delay']/60) + ' hours'; })
+                 .on("mouseover", function(){
+                    div.transition()		
+                        .duration(200)		
+                        .style("opacity", .9);		
+                    div.html(d3.select(this).attr("state") + "<br/>"  
+                    + "Year: " + d3.select(this).attr("year")+ "<br/>"  
+                    + "Arr Delay/ 1,000 flights: " + d3.select(this).attr("delay"))	
+                       .style("left", (d3.event.pageX) + "px")		
+                       .style("top", (d3.event.pageY - 28) + "px");
+                 })
+                 .on("mouseout", function(d) {		
+                      div.transition()		
+                          .duration(200)		
+                          .style("opacity", 0);	
+                  });
+             //debugger;
+             svg.append("g")
+                  .attr("class", "state")
+                  .selectAll("text")
+                  .remove("text")
+                  .data(state_name_max)
+                  .enter()
+                  .append("text")
+                  .attr("text-anchor", "middle")  
+                  .attr("transform", "translate("+ (margin*6) +","+(15)+")")  
+                  .text("State with the Maximum Delay: " + state_name_max)  
+                  
+              svg.append("g")
+                  .attr("class", "state")
+                  .selectAll("text")
+                  .remove("text")
+                  .data(state_name_min)
+                  .enter()
+                  .append("text")
+                  .attr("text-anchor", "middle")  
+                  .attr("transform", "translate("+ (margin*6) +","+(30)+")")  
+                  .text("State with the Minimum Delay: " + state_name_min)
+
+            }
+            
+            // Creates a list of years from 1995 to 2008
+            var years = [];  
+            var i = 1995
+            for (i=1995; i<=2008; i++) {
+                years.push(i);
+            }
+            var year_idx = 0;
+            
+            // Cycle through the years list and display each year    
+            var year_interval = setInterval(function() {
+                update(years[year_idx]);
+                year_idx++;
+                
+                // After showing the the last year in the list aka 2008, display 
+                // buttons to allow uses to switch between years.
+                if(year_idx >= years.length) {
+                    clearInterval(year_interval);
+                var buttons = d3.select("body")
+                    .append("div")
+                    .attr("class", "years_buttons")
+                    .selectAll("div")
+                    .data(years)
+                    .enter()
+                    .append("div")
+                    .text(function(d) {
+                        return d;
+                    });
+                
+                
+                //svg.append("text")
+                //    .attr("text-anchor", "middle")  
+                //    .attr("transform", "translate("+ (width-margin) +","+(height-100)+")") 
+                //    .text("test")  
+                
+                var sentence = "In terms of delay, northern/ western states tend to perform better compared to their southern/ eastern counterparts.  For example, if one compares New York to Florida, we note that even though their population is similar, New York still tend to experience slightly less delays (except the most recent 3 years). Similar argument between wesstern and eastern states can be made between California and New York "
+                var arr = sentence.split(" "); 
+                var j = 26;
+                var mystring = ""      
+                debugger;
+                for (i = 0; i < arr.length; i+=1) {
+                    mystring += arr[i] + " "
+                    debugger;
+                    if (mystring.split(" ").length-2 === 6) {
+                      j+=1
+                      svg.append("text").append("tspan")
+                        .text(mystring)//arr[i] + " " + arr[i+1] + " " + arr[i+2] + " " +arr[i+3]+ " " +arr[i+4]+ " " +arr[i+5] + " " +arr[i+6] )
+                        .attr("dy", j + "em")
+                        .attr("x", (width-margin) )
+                        .attr("text-anchor", "middle")
+                        .attr("class", "tspan" + i);
+                      mystring = ""
+                    } else if (i===arr.length-1){
+                      j+=1
+                      svg.append("text").append("tspan")
+                        .text(mystring)//arr[i] + " " + arr[i+1] + " " + arr[i+2] + " " +arr[i+3]+ " " +arr[i+4]+ " " +arr[i+5] + " " +arr[i+6] )
+                        .attr("dy", j + "em")
+                        .attr("x", (width-margin) )
+                        .attr("text-anchor", "middle")
+                        .attr("class", "tspan" + i);
+                    }
+                };
+
+      
+
+
+                
+                buttons.on("click", function(d) {
+                    d3.select(".years_buttons")
+                      .selectAll("div")
+                      .transition()
+                      .duration(500)
+                      .style("color", "black")
+                      .style("background", "rgb(251, 201, 127)");
+
+                    d3.select(this)
+                      .transition()
+                      .duration(500)
+                      .style("background", "lightBlue")
+                      .style("color", "white");
+                    update(d);
+                });
+                }
+            },1000)
+
+
+        }
+
+      d3.csv("ArrDelays.csv", plot_points);
+    };
+    </script>
+  </head>
+<body>
+  <script type="text/javascript">
+  /*
+    Use D3 to load the GeoJSON file
+    */
+    
+d3.json("US_States.json", draw);
+  </script>
+</body>
+</html>
